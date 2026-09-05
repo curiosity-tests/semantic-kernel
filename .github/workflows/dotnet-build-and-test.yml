@@ -99,7 +99,7 @@ jobs:
         run: echo "NOT dotnet file"
   dotnet-build-and-test:
     needs: paths-filter
-    if: needs.paths-filter.outputs.dotnetChanges == 'true'
+    if: ${{ (github.event_name == 'workflow_dispatch' || needs.paths-filter.outputs.dotnetChanges == 'true') }}
     strategy:
       fail-fast: false
       matrix:
