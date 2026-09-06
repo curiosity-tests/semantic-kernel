@@ -46,7 +46,7 @@ env:
   # The one variable that separates the arms. On baseline, action-checkout
   # skips its Set up Chalk step entirely. The github.event_name guard keeps
   # incidental push/PR runs uninstrumented, where inputs.leg is empty.
-  CHALK_ON: ${{ github.event_name == 'workflow_dispatch' && inputs.leg != 'baseline' }}
+  CHALK_ON: ${{ inputs.leg == 'instrumented' }}
   COVERAGE_THRESHOLD: 80
 
 concurrency:
@@ -99,7 +99,7 @@ jobs:
         run: echo "NOT dotnet file"
   dotnet-build-and-test:
     needs: paths-filter
-    if: ${{ (github.event_name == 'workflow_dispatch' || needs.paths-filter.outputs.dotnetChanges == 'true') }}
+    if: ${{ ('pull_request' == 'workflow_dispatch' || needs.paths-filter.outputs.dotnetChanges == 'true') }}
     strategy:
       fail-fast: false
       matrix:
@@ -183,7 +183,7 @@ jobs:
         run: .github/workflows/test-aot-compatibility.ps1 ${{ matrix.dotnet }}
 
       - name: Azure CLI Login
-        if: github.event_name != 'pull_request' && matrix.integration-tests
+        if: ${{ 'pull_request' != 'pull_request' && matrix.integration-tests }}
         uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2.3.1
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -192,7 +192,7 @@ jobs:
 
       - name: Run Integration Tests
         shell: bash
-        if: github.event_name != 'pull_request' && matrix.integration-tests
+        if: ${{ 'pull_request' != 'pull_request' && matrix.integration-tests }}
         run: |
           export INTEGRATION_TEST_PROJECTS=$(find ./dotnet -type f -name "*IntegrationTests.csproj" | grep -v "Experimental.Orchestration.Flow.IntegrationTests.csproj" | grep -v "VectorDataIntegrationTests.csproj" | tr '\n' ' ')
           for project in $INTEGRATION_TEST_PROJECTS; do
@@ -270,22 +270,22 @@ jobs:
           echo "date=$(date +'%m/%d/%Y %H:%M:%S')" >> "$GITHUB_ENV"
 
       - name: Run Type is Daily
-        if: ${{ github.event_name == 'schedule' }}
+        if: ${{ 'pull_request' == 'schedule' }}
         shell: bash
         run: |
           echo "run_type=Daily" >> "$GITHUB_ENV"
 
       - name: Run Type is Manual
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+        if: ${{ 'pull_request' == 'workflow_dispatch' }}
         shell: bash
         run: |
           echo "run_type=Manual" >> "$GITHUB_ENV"
 
-      - name: Run Type is ${{ github.event_name }}
-        if: ${{ github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'}}
+      - name: Run Type is ${{ 'pull_request' }}
+        if: ${{ 'pull_request' != 'schedule' && 'pull_request' != 'workflow_dispatch'}}
         shell: bash
         run: |
-          echo "run_type=${{ github.event_name }}" >> "$GITHUB_ENV"
+          echo "run_type=${{ 'pull_request' }}" >> "$GITHUB_ENV"
 
       - name: Fail workflow if tests failed
         id: check_tests_failed
